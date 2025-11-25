@@ -235,7 +235,7 @@ const App: React.FC = () => {
     }
 
     // Check Win Condition
-    let nextWinner: PlayerColor | null = null;
+    let nextWinner: PlayerColor | 'DRAW' | null = null;
     
     // Win Logic: Game does not end if unrevealed cards exist
     const unrevealedCount = nextBoard.filter(c => !c.isRevealed).length;
@@ -244,13 +244,17 @@ const App: React.FC = () => {
         const realRedCount = nextBoard.filter(c => c.piece?.color === PlayerColor.RED).length;
         const realBlueCount = nextBoard.filter(c => c.piece?.color === PlayerColor.BLUE).length;
 
-        if (realRedCount === 0 && realBlueCount === 0) nextWinner = null; 
+        if (realRedCount === 0 && realBlueCount === 0) nextWinner = 'DRAW'; 
         else if (realRedCount === 0) nextWinner = PlayerColor.BLUE;
         else if (realBlueCount === 0) nextWinner = PlayerColor.RED;
     }
 
     if (nextWinner) {
-      logMessage += ` 游戏结束! ${getColorName(nextWinner)} 获胜!`;
+      if (nextWinner === 'DRAW') {
+        logMessage += ` 游戏结束! 平局!`;
+      } else {
+        logMessage += ` 游戏结束! ${getColorName(nextWinner)} 获胜!`;
+      }
     }
 
     setGameState(prev => ({
@@ -348,7 +352,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen font-sans flex flex-col items-center justify-between p-2 md:p-4 bg-[#8cd65e]">
+    <div className="min-h-[100dvh] font-sans flex flex-col items-center justify-between p-2 md:p-4 bg-[#8cd65e]">
       
       {/* 1. Header: Player Stats (Wooden Panels) */}
       <div className="w-full max-w-xl mt-2 flex-shrink-0 flex items-center justify-between gap-2 relative z-20">
@@ -363,8 +367,8 @@ const App: React.FC = () => {
              </div>
              <div className="flex flex-col">
                  <span className="text-xs font-bold text-amber-200 uppercase tracking-wider">Red Team</span>
-                 <span className="text-lg font-black leading-none drop-shadow-sm min-h-[1.5rem]">
-                    {gameState.turn === PlayerColor.RED && !gameState.winner ? '到你了' : ''}
+                 <span className="text-lg font-black leading-none drop-shadow-sm min-h-[1.5rem] mt-1">
+                    {!gameState.winner ? (gameState.turn === PlayerColor.RED ? '到你了' : '等待中') : ''}
                  </span>
              </div>
          </div>
@@ -379,7 +383,7 @@ const App: React.FC = () => {
          {/* Blue Player (Right) */}
          <div className={`flex flex-row-reverse items-center gap-2 pl-4 pr-2 py-2 rounded-2xl border-2 shadow-lg text-white transition-all duration-300 relative wood-pattern
              ${gameState.turn === PlayerColor.BLUE && !gameState.winner
-               ? 'scale-105 border-red-600 ring-4 ring-red-400 z-10' // Active: Red Border
+               ? 'scale-105 border-blue-600 ring-4 ring-blue-400 z-10' // Active: Blue Border
                : 'opacity-90 scale-95 border-[#b45309]' // Inactive: Brown Border
             }`}>
              <div className="w-12 h-12 rounded-full border-2 border-white/50 bg-blue-500 flex items-center justify-center text-2xl shadow-inner relative">
@@ -387,8 +391,8 @@ const App: React.FC = () => {
              </div>
              <div className="flex flex-col items-end">
                  <span className="text-xs font-bold text-amber-200 uppercase tracking-wider">Blue Team</span>
-                 <span className="text-lg font-black leading-none drop-shadow-sm min-h-[1.5rem]">
-                    {gameState.turn === PlayerColor.BLUE && !gameState.winner ? '到你了' : ''}
+                 <span className="text-lg font-black leading-none drop-shadow-sm min-h-[1.5rem] mt-1">
+                    {!gameState.winner ? (gameState.turn === PlayerColor.BLUE ? '到你了' : '等待中') : ''}
                  </span>
              </div>
          </div>
@@ -572,7 +576,7 @@ const App: React.FC = () => {
       </div>
 
       {/* Footer: Rank Bar */}
-      <div className="w-full max-w-xl mb-4 pb-8 flex-shrink-0">
+      <div className="w-full max-w-xl mb-2 flex-shrink-0">
          <div className="bg-[#fffbeb] rounded-xl border-b-4 border-amber-200 p-2 flex items-center justify-between shadow-sm">
              <div className="flex gap-1 overflow-x-auto no-scrollbar w-full justify-between px-2">
                 {[
