@@ -1,0 +1,5 @@
+{
+  "name": "斗兽棋 - 迷雾丛林",
+  "description": "一款4x4的盲棋版斗兽棋游戏 (连线版)。翻牌、移动、吃子。可以与朋友对战或挑战 Gemini AI。",
+  "requestFramePermissions": []
+}
