@@ -71,8 +71,6 @@ const BoardCell: React.FC<BoardCellProps> = ({
               {ANIMAL_EMOJIS[piece.type]}
             </div>
         </div>
-        
-        {/* Small Rank Indicator (Optional, maybe too small for this design, leaving out for cleanness like reference) */}
       </div>
     );
   };
@@ -83,7 +81,7 @@ const BoardCell: React.FC<BoardCellProps> = ({
       style={style}
       className={`
         absolute flex items-center justify-center
-        w-[15%] aspect-square
+        w-[15%] h-[15%]
         transition-all duration-300
         ${disabled ? 'cursor-not-allowed opacity-90' : 'cursor-pointer'}
         ${isSelected ? 'z-30 scale-110 -translate-y-4' : 'z-20'}

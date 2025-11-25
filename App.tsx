@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { INITIAL_DECK, BOARD_SIZE, TOTAL_CELLS, CENTER_INDEX, ANIMAL_NAMES, ANIMAL_RANKS, ANIMAL_EMOJIS } from './constants';
 import { GameState, Cell, PlayerColor, Move, AnimalType } from './types';
 import BoardCell from './components/BoardCell';
-import { RefreshCw, Info, Shield, Trophy, Users, Star, Swords, Circle } from 'lucide-react';
+import { RefreshCw, Info, Shield, Trophy, Users, Swords, Maximize, Minimize } from 'lucide-react';
 
 const App: React.FC = () => {
   // --- State ---
@@ -19,6 +19,7 @@ const App: React.FC = () => {
   
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [showRules, setShowRules] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // --- Initialization ---
   const initGame = useCallback(() => {
@@ -55,6 +56,29 @@ const App: React.FC = () => {
   useEffect(() => {
     initGame();
   }, [initGame]);
+
+  // Fullscreen listener
+  useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    return () => document.removeEventListener('fullscreenchange', handleFsChange);
+  }, []);
+
+  const toggleFullScreen = async () => {
+    try {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+      } else {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        }
+      }
+    } catch (err) {
+      console.error("Fullscreen toggle failed:", err);
+    }
+  };
 
   // --- Topology Helpers ---
   const isAdjacent = useCallback((idx1: number, idx2: number) => {
@@ -315,7 +339,7 @@ const App: React.FC = () => {
         const style = getPositionStyle(i);
         points.push(
             <div key={`pad-${i}`} 
-              className="absolute w-[15%] aspect-square bg-[#a6e67e] rounded-xl border-b-4 border-[#8bc965]" 
+              className="absolute w-[15%] h-[15%] bg-[#a6e67e] rounded-xl border-b-4 border-[#8bc965]" 
               style={style}>
             </div>
         );
@@ -324,23 +348,23 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen font-sans flex flex-col items-center justify-between p-4 bg-[#8cd65e] overflow-hidden">
+    <div className="min-h-screen font-sans flex flex-col items-center justify-between p-2 md:p-4 bg-[#8cd65e]">
       
       {/* 1. Header: Player Stats (Wooden Panels) */}
-      <div className="w-full max-w-lg mt-2 flex items-center justify-between gap-2 relative z-20">
+      <div className="w-full max-w-xl mt-2 flex-shrink-0 flex items-center justify-between gap-2 relative z-20">
          {/* Red Player (Left) */}
-         <div className={`flex items-center gap-2 pr-4 pl-2 py-2 rounded-2xl border-2 border-[#b45309] bg-[#d97706] shadow-lg text-white transition-all duration-300 relative wood-pattern ${gameState.turn === PlayerColor.RED ? 'scale-105 ring-4 ring-yellow-400 z-10' : 'opacity-90 scale-95'}`}>
+         <div className={`flex items-center gap-2 pr-4 pl-2 py-2 rounded-2xl border-2 shadow-lg text-white transition-all duration-300 relative wood-pattern 
+            ${gameState.turn === PlayerColor.RED && !gameState.winner
+               ? 'scale-105 border-red-600 ring-4 ring-red-400 z-10' // Active: Red Border
+               : 'opacity-90 scale-95 border-[#b45309]' // Inactive: Brown Border
+            }`}>
              <div className="w-12 h-12 rounded-full border-2 border-white/50 bg-rose-500 flex items-center justify-center text-2xl shadow-inner relative">
                  🧑
-                 {/* Turn Indicator */}
-                 {gameState.turn === PlayerColor.RED && !gameState.winner && (
-                   <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-600 rounded-full border-2 border-white animate-pulse shadow-md z-20"></div>
-                 )}
              </div>
              <div className="flex flex-col">
                  <span className="text-xs font-bold text-amber-200 uppercase tracking-wider">Red Team</span>
-                 <span className="text-lg font-black leading-none drop-shadow-sm">
-                    玩家
+                 <span className="text-lg font-black leading-none drop-shadow-sm min-h-[1.5rem]">
+                    {gameState.turn === PlayerColor.RED && !gameState.winner ? '到你了' : ''}
                  </span>
              </div>
          </div>
@@ -350,42 +374,40 @@ const App: React.FC = () => {
              <div className="w-14 h-14 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full border-4 border-white shadow-xl flex items-center justify-center">
                  <Swords className="text-white fill-white" size={28} />
              </div>
-             {gameState.winner && (
-                 <div className="absolute top-14 whitespace-nowrap bg-white text-orange-600 px-3 py-1 rounded-full text-xs font-black shadow-lg animate-bounce">
-                     {gameState.winner === 'DRAW' ? '平局' : (gameState.winner === PlayerColor.RED ? '红方胜' : '蓝方胜')}
-                 </div>
-             )}
          </div>
 
          {/* Blue Player (Right) */}
-         <div className={`flex flex-row-reverse items-center gap-2 pl-4 pr-2 py-2 rounded-2xl border-2 border-[#b45309] bg-[#d97706] shadow-lg text-white transition-all duration-300 relative wood-pattern ${gameState.turn === PlayerColor.BLUE ? 'scale-105 ring-4 ring-yellow-400 z-10' : 'opacity-90 scale-95'}`}>
+         <div className={`flex flex-row-reverse items-center gap-2 pl-4 pr-2 py-2 rounded-2xl border-2 shadow-lg text-white transition-all duration-300 relative wood-pattern
+             ${gameState.turn === PlayerColor.BLUE && !gameState.winner
+               ? 'scale-105 border-red-600 ring-4 ring-red-400 z-10' // Active: Red Border
+               : 'opacity-90 scale-95 border-[#b45309]' // Inactive: Brown Border
+            }`}>
              <div className="w-12 h-12 rounded-full border-2 border-white/50 bg-blue-500 flex items-center justify-center text-2xl shadow-inner relative">
                  🧑
-                 {/* Turn Indicator */}
-                 {gameState.turn === PlayerColor.BLUE && !gameState.winner && (
-                   <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-600 rounded-full border-2 border-white animate-pulse shadow-md z-20"></div>
-                 )}
              </div>
              <div className="flex flex-col items-end">
                  <span className="text-xs font-bold text-amber-200 uppercase tracking-wider">Blue Team</span>
-                 <span className="text-lg font-black leading-none drop-shadow-sm">
-                    玩家
+                 <span className="text-lg font-black leading-none drop-shadow-sm min-h-[1.5rem]">
+                    {gameState.turn === PlayerColor.BLUE && !gameState.winner ? '到你了' : ''}
                  </span>
              </div>
          </div>
       </div>
 
       {/* Control Strip */}
-      <div className="flex gap-4 mt-4 relative z-10">
+      <div className="flex gap-2 sm:gap-4 mt-4 relative z-10 flex-shrink-0">
          <div className="bg-white/90 p-2 rounded-full shadow-lg text-green-700 flex items-center gap-2 px-4 font-bold text-sm">
             <Users size={20} />
-            双人对战
+            <span className="hidden sm:inline">双人对战</span>
          </div>
          <button onClick={() => setShowRules(true)} className="bg-white/90 p-2 rounded-full shadow-lg text-amber-600 hover:scale-110 transition-transform">
              <Info size={20} />
          </button>
          <button onClick={initGame} className="bg-white/90 p-2 rounded-full shadow-lg text-blue-600 hover:scale-110 transition-transform">
              <RefreshCw size={20} />
+         </button>
+         <button onClick={toggleFullScreen} className="bg-white/90 p-2 rounded-full shadow-lg text-slate-700 hover:scale-110 transition-transform">
+             {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
          </button>
       </div>
 
@@ -411,6 +433,40 @@ const App: React.FC = () => {
         </div>
       )}
 
+      {/* Victory Modal */}
+      {gameState.winner && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4 animate-in zoom-in duration-300">
+          <div className="bg-[#fffbeb] rounded-[2rem] p-8 max-w-sm w-full border-4 border-yellow-400 shadow-[0_0_50px_rgba(250,204,21,0.5)] relative text-center">
+            
+            {/* Crown Icon */}
+            <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-20 h-20 bg-yellow-400 rounded-full flex items-center justify-center border-4 border-[#fffbeb] shadow-xl animate-bounce">
+                <Trophy size={40} className="text-amber-700 fill-amber-100" />
+            </div>
+
+            <h2 className="text-3xl font-black mt-8 mb-2 text-amber-800">
+              恭喜!
+            </h2>
+            
+            <div className="py-4">
+              {gameState.winner === 'DRAW' ? (
+                <div className="text-xl font-bold text-slate-600">平分秋色!</div>
+              ) : (
+                <>
+                  <div className="text-lg text-amber-900/60 font-bold mb-2">获胜方</div>
+                  <div className={`text-4xl font-black ${gameState.winner === PlayerColor.RED ? 'text-rose-500' : 'text-blue-500'} drop-shadow-sm`}>
+                    {gameState.winner === PlayerColor.RED ? '红方玩家' : '蓝方玩家'}
+                  </div>
+                </>
+              )}
+            </div>
+
+            <button onClick={initGame} className="mt-6 w-full py-4 bg-gradient-to-r from-yellow-400 to-orange-500 text-white font-black text-xl rounded-2xl shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2">
+              <RefreshCw size={24} /> 再来一局
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* GAME BOARD */}
       {/* 
         Changes for Alignment:
@@ -419,7 +475,7 @@ const App: React.FC = () => {
         3. All board elements (SVG, Pads, Pieces) use absolute positioning relative to this Inner Container.
            Since they share the same parent bounds (0% to 100%), coordinates will align perfectly.
       */}
-      <div className="relative w-full max-w-xl aspect-square mx-auto my-4 select-none">
+      <div className="relative w-full max-w-xl aspect-square mx-auto my-auto select-none flex-shrink-0">
         
         {/* Play Area: Inset by 10% to prevent pieces from clipping at edges (Zoomed In) */}
         <div className="absolute top-[10%] left-[10%] right-[10%] bottom-[10%]">
@@ -459,8 +515,8 @@ const App: React.FC = () => {
                 {renderPads()}
             </div>
 
-            {/* 3. Center Burrow */}
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[11%] aspect-square rounded-full bg-[#5a493e] border-4 border-[#45362e] shadow-inner flex items-center justify-center z-0">
+            {/* 3. Center Burrow - Explicit height/width for circle */}
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[11%] h-[11%] rounded-full bg-[#5a493e] border-4 border-[#45362e] shadow-inner flex items-center justify-center z-0">
                 <div className="text-xl md:text-2xl opacity-50 grayscale brightness-50">🐭</div>
             </div>
 
@@ -516,14 +572,14 @@ const App: React.FC = () => {
       </div>
 
       {/* Footer: Rank Bar */}
-      <div className="w-full max-w-lg mb-4">
+      <div className="w-full max-w-xl mb-4 pb-8 flex-shrink-0">
          <div className="bg-[#fffbeb] rounded-xl border-b-4 border-amber-200 p-2 flex items-center justify-between shadow-sm">
              <div className="flex gap-1 overflow-x-auto no-scrollbar w-full justify-between px-2">
                 {[
                   AnimalType.ELEPHANT, AnimalType.LION, AnimalType.TIGER, AnimalType.LEOPARD,
                   AnimalType.WOLF, AnimalType.DOG, AnimalType.CAT, AnimalType.RAT
                 ].map((type) => (
-                  <div key={type} className="flex flex-col items-center">
+                  <div key={type} className="flex flex-col items-center flex-shrink-0">
                      <span className="text-xl md:text-2xl filter drop-shadow-sm">{ANIMAL_EMOJIS[type]}</span>
                      <span className="text-[10px] text-amber-800 font-bold scale-75">{ANIMAL_RANKS[type]}</span>
                   </div>
