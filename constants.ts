@@ -21,9 +21,9 @@ export const ANIMAL_EMOJIS: Record<AnimalType, string> = {
   [AnimalType.TIGER]: '🐯',
   [AnimalType.LEOPARD]: '🐆',
   [AnimalType.WOLF]: '🐺',
-  [AnimalType.DOG]: '🐕',
-  [AnimalType.CAT]: '🐈',
-  [AnimalType.RAT]: '🐀',
+  [AnimalType.DOG]: '🐶',
+  [AnimalType.CAT]: '🐱',
+  [AnimalType.RAT]: '🐭',
 };
 
 export const ANIMAL_NAMES: Record<AnimalType, string> = {

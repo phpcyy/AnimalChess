@@ -1,13 +1,15 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
-import { INITIAL_DECK, BOARD_SIZE, TOTAL_CELLS, CENTER_INDEX, ANIMAL_NAMES } from './constants';
+import { INITIAL_DECK, BOARD_SIZE, TOTAL_CELLS, CENTER_INDEX, ANIMAL_NAMES, ANIMAL_RANKS, ANIMAL_EMOJIS } from './constants';
 import { GameState, Cell, PlayerColor, Move, AnimalType } from './types';
 import BoardCell from './components/BoardCell';
 import { getAIMove } from './services/geminiService';
-import { RefreshCw, User, Cpu, Info, Shield, Trophy, Users, Bot } from 'lucide-react';
+import { RefreshCw, Info, Shield, Trophy, Users, Bot, Star, Swords, Circle } from 'lucide-react';
 
 const App: React.FC = () => {
   // --- State ---
-  const [gameMode, setGameMode] = useState<'PVE' | 'PVP'>('PVE');
+  // Default to PVP as requested
+  const [gameMode, setGameMode] = useState<'PVE' | 'PVP'>('PVP');
   const [gameState, setGameState] = useState<GameState>({
     board: [],
     turn: PlayerColor.RED,
@@ -259,15 +261,13 @@ const App: React.FC = () => {
         const realRedCount = nextBoard.filter(c => c.piece?.color === PlayerColor.RED).length;
         const realBlueCount = nextBoard.filter(c => c.piece?.color === PlayerColor.BLUE).length;
 
-        if (realRedCount === 0 && realBlueCount === 0) nextWinner = null; // Theoretically possible if last two die together? Or Draw?
+        if (realRedCount === 0 && realBlueCount === 0) nextWinner = null; 
         else if (realRedCount === 0) nextWinner = PlayerColor.BLUE;
         else if (realBlueCount === 0) nextWinner = PlayerColor.RED;
     }
 
     if (nextWinner) {
       logMessage += ` 游戏结束! ${getColorName(nextWinner)} 获胜!`;
-    } else if (unrevealedCount > 0 && nextBoard.filter(c => c.piece?.color === PlayerColor.RED).length === 0) {
-       // Optional: Add hint that Red is wiped out but game continues? 
     }
 
     setGameState(prev => ({
@@ -399,240 +399,238 @@ const App: React.FC = () => {
     };
   };
 
-  const renderGridPoints = () => {
+  // Render Green Pads at grid intersections
+  const renderPads = () => {
     const points = [];
     for (let i = 0; i < 16; i++) {
         const style = getPositionStyle(i);
         points.push(
-            <div key={`pt-${i}`} className="absolute w-2 h-2 bg-slate-600 rounded-full" style={style}></div>
+            <div key={`pad-${i}`} 
+              className="absolute w-[15%] aspect-square bg-[#a6e67e] rounded-xl border-b-4 border-[#8bc965]" 
+              style={style}>
+            </div>
         );
     }
     return points;
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 font-sans flex flex-col items-center p-4">
+    <div className="min-h-screen font-sans flex flex-col items-center justify-between p-4 bg-[#8cd65e] overflow-hidden">
       
-      {/* Header */}
-      <header className="w-full max-w-lg flex justify-between items-center mb-4">
-        <div>
-           <h1 className="text-2xl font-bold bg-gradient-to-r from-teal-400 to-indigo-400 bg-clip-text text-transparent">
-            斗兽棋
-          </h1>
-          <p className="text-slate-400 text-xs">迷雾丛林 (连线版)</p>
-        </div>
-        <div className="flex gap-2">
-           <button 
-             onClick={toggleGameMode} 
-             className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-medium transition-colors"
-             title="切换游戏模式"
-           >
-             {gameMode === 'PVE' ? <Bot size={14} className="text-purple-400"/> : <Users size={14} className="text-blue-400"/>}
-             {gameMode === 'PVE' ? '人机对战中' : '双人对战中'}
-           </button>
-           <button onClick={() => setShowRules(!showRules)} className="p-2 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-700">
-             <Info size={20} className="text-slate-300"/>
-           </button>
-           <button onClick={initGame} className="p-2 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-700">
-             <RefreshCw size={20} className="text-slate-300"/>
-           </button>
-        </div>
-      </header>
+      {/* 1. Header: Player Stats (Wooden Panels) */}
+      <div className="w-full max-w-lg mt-2 flex items-center justify-between gap-2 relative z-20">
+         {/* Red Player (Left) */}
+         <div className={`flex items-center gap-2 pr-4 pl-2 py-2 rounded-2xl border-2 border-[#b45309] bg-[#d97706] shadow-lg text-white transition-all duration-300 relative wood-pattern ${gameState.turn === PlayerColor.RED ? 'scale-105 ring-4 ring-yellow-400 z-10' : 'opacity-90 scale-95'}`}>
+             <div className="w-12 h-12 rounded-full border-2 border-white/50 bg-rose-500 flex items-center justify-center text-2xl shadow-inner relative">
+                 {gameState.redPlayer === 'AI' ? '🤖' : (gameState.redPlayer ? '🧑' : '?')}
+                 {/* Turn Indicator */}
+                 {gameState.turn === PlayerColor.RED && !gameState.winner && (
+                   <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-600 rounded-full border-2 border-white animate-pulse shadow-md z-20"></div>
+                 )}
+             </div>
+             <div className="flex flex-col">
+                 <span className="text-xs font-bold text-amber-200 uppercase tracking-wider">Red Team</span>
+                 <span className="text-lg font-black leading-none drop-shadow-sm">
+                    {gameState.redPlayer === 'AI' ? '电脑' : '玩家'}
+                 </span>
+             </div>
+         </div>
+
+         {/* VS Badge */}
+         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-30 flex flex-col items-center">
+             <div className="w-14 h-14 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full border-4 border-white shadow-xl flex items-center justify-center">
+                 <Swords className="text-white fill-white" size={28} />
+             </div>
+             {gameState.winner && (
+                 <div className="absolute top-14 whitespace-nowrap bg-white text-orange-600 px-3 py-1 rounded-full text-xs font-black shadow-lg animate-bounce">
+                     {gameState.winner === 'DRAW' ? '平局' : (gameState.winner === PlayerColor.RED ? '红方胜' : '蓝方胜')}
+                 </div>
+             )}
+         </div>
+
+         {/* Blue Player (Right) */}
+         <div className={`flex flex-row-reverse items-center gap-2 pl-4 pr-2 py-2 rounded-2xl border-2 border-[#b45309] bg-[#d97706] shadow-lg text-white transition-all duration-300 relative wood-pattern ${gameState.turn === PlayerColor.BLUE ? 'scale-105 ring-4 ring-yellow-400 z-10' : 'opacity-90 scale-95'}`}>
+             <div className="w-12 h-12 rounded-full border-2 border-white/50 bg-blue-500 flex items-center justify-center text-2xl shadow-inner relative">
+                 {gameState.bluePlayer === 'AI' ? '🤖' : (gameState.bluePlayer ? '🧑' : '?')}
+                 {/* Turn Indicator */}
+                 {gameState.turn === PlayerColor.BLUE && !gameState.winner && (
+                   <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-600 rounded-full border-2 border-white animate-pulse shadow-md z-20"></div>
+                 )}
+             </div>
+             <div className="flex flex-col items-end">
+                 <span className="text-xs font-bold text-amber-200 uppercase tracking-wider">Blue Team</span>
+                 <span className="text-lg font-black leading-none drop-shadow-sm">
+                    {gameState.bluePlayer === 'AI' ? '电脑' : '玩家'}
+                 </span>
+             </div>
+         </div>
+      </div>
+
+      {/* Control Strip */}
+      <div className="flex gap-4 mt-4 relative z-10">
+         <button onClick={toggleGameMode} className="bg-white/90 p-2 rounded-full shadow-lg text-green-700 hover:scale-110 transition-transform flex items-center gap-2 px-4 font-bold text-sm">
+            {gameMode === 'PVE' ? <Bot size={20} /> : <Users size={20} />}
+            {gameMode === 'PVE' ? '人机对战中' : '双人对战中'}
+         </button>
+         <button onClick={() => setShowRules(true)} className="bg-white/90 p-2 rounded-full shadow-lg text-amber-600 hover:scale-110 transition-transform">
+             <Info size={20} />
+         </button>
+         <button onClick={initGame} className="bg-white/90 p-2 rounded-full shadow-lg text-blue-600 hover:scale-110 transition-transform">
+             <RefreshCw size={20} />
+         </button>
+      </div>
 
       {/* Rules Modal */}
       {showRules && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="bg-slate-800 rounded-2xl p-6 max-w-md w-full border border-slate-600 shadow-2xl relative">
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-teal-400">
-              <Shield size={24}/> 游戏规则
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-[#fffbeb] rounded-3xl p-6 max-w-sm w-full border-4 border-amber-500 shadow-2xl relative">
+            <h2 className="text-2xl font-black mb-4 flex items-center gap-2 text-amber-800">
+              <Shield size={28} className="text-amber-500"/> 规则说明
             </h2>
-            <ul className="space-y-3 text-slate-300 text-sm list-disc pl-4">
-              <li><strong>目标:</strong> 吃掉对手所有棋子。</li>
-              <li><strong>棋盘:</strong> 棋子在4x4的交叉点上移动。16个普通点 + 1个中心兽穴。</li>
-              <li><strong>中心兽穴:</strong> 
-                <ul className="list-circle pl-4 mt-1 text-slate-400">
-                  <li>只有<strong>老鼠 (等级1)</strong> 可以进出。</li>
-                  <li><strong>安全区域:</strong> 一旦有老鼠进入，任何棋子（包括对方老鼠）不可进入/攻击。</li>
-                </ul>
-              </li>
-              <li><strong>玩法:</strong> 
-                  <ul className="list-circle pl-4 mt-1 text-slate-400">
-                      <li>轮到你时，可以<strong>翻牌</strong>（翻开暗棋）或<strong>移动</strong>（已翻开的棋子）。</li>
-                      <li>第一个翻出的颜色即为你的颜色。</li>
-                  </ul>
-              </li>
-              <li><strong>战斗:</strong> 等级高的吃等级低的。（大象8 > 狮子7 ...）</li>
-              <li><strong>例外:</strong>
-                  <ul className="list-circle pl-4 mt-1 text-slate-400">
-                      <li><strong>老鼠 (1)</strong> 可以吃 <strong>大象 (8)</strong>。</li>
-                      <li>等级相同则<strong>同归于尽</strong>（双双移除）。</li>
-                  </ul>
-              </li>
-              <li><strong>胜负:</strong> 当所有暗牌都被翻开，且一方失去所有棋子时判负。</li>
-            </ul>
-            <button onClick={() => setShowRules(false)} className="mt-6 w-full py-3 bg-teal-600 hover:bg-teal-500 text-white font-bold rounded-lg transition-colors">明白了</button>
+            <div className="space-y-3 text-amber-900/80 text-sm">
+               <ul className="space-y-2 list-disc pl-4 marker:text-amber-500">
+                  <li><strong>棋盘:</strong> 翻开神秘盒子，寻找你的伙伴。</li>
+                  <li><strong>中心鼠洞:</strong> 只有 <span className="font-bold text-amber-700">老鼠 🐭</span> 能进，进去后无敌！</li>
+                  <li><strong>等级压制:</strong> 🐘 > 🦁 > 🐯 > 🐆 > 🐺 > 🐶 > 🐱 > 🐭</li>
+                  <li><strong>逆袭:</strong> 小老鼠 🐭 可以吃掉 大象 🐘！</li>
+               </ul>
+            </div>
+            <button onClick={() => setShowRules(false)} className="mt-6 w-full py-3 bg-amber-500 hover:bg-amber-600 text-white font-black text-lg rounded-xl shadow-lg border-b-4 border-amber-700 active:border-b-0 active:translate-y-1 transition-all">
+              明白了!
+            </button>
           </div>
         </div>
       )}
 
-      {/* Status Bar */}
-      <div className="w-full max-w-lg flex items-center justify-between bg-slate-800/80 rounded-xl p-3 mb-6 border border-slate-700 backdrop-blur-sm shadow-lg">
-        <div className={`flex items-center gap-2 ${gameState.turn === PlayerColor.RED ? 'opacity-100' : 'opacity-40 grayscale'} transition-all duration-300`}>
-           <div className={`w-8 h-8 rounded-full flex items-center justify-center bg-red-900 border border-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]`}>
-              {gameState.redPlayer === 'AI' ? <Cpu size={16} className="text-red-400"/> : <User size={16} className="text-red-400"/>}
-           </div>
-           <div className="leading-tight">
-             <span className="block text-xs font-bold text-red-400">红方</span>
-             <span className="text-[10px] text-slate-400 block">
-               {gameState.redPlayer === 'HUMAN' ? '玩家' : (gameState.redPlayer === 'AI' ? '电脑' : '等待中...')}
-             </span>
-           </div>
-        </div>
-
-        <div className="flex-1 px-4 text-center">
-             {gameState.winner ? (
-                <div className="inline-flex items-center gap-2 px-3 py-1 bg-yellow-900/30 border border-yellow-600/50 rounded-full text-yellow-400 animate-pulse font-bold text-sm">
-                    <Trophy size={14} /> 
-                    {gameState.winner === 'DRAW' ? '平局!' : `${getColorName(gameState.winner)} 获胜!`}
-                </div>
-            ) : (
-                 <div className="text-sm font-medium text-slate-300">
-                    {!gameState.userColor && gameMode === 'PVE' ? "请翻牌" : 
-                     (gameState.turn === gameState.userColor && gameMode === 'PVE' ? "你的回合" : 
-                     (gameMode === 'PVP' ? `${getColorName(gameState.turn)}回合` : "电脑思考中..."))}
-                 </div>
-            )}
-        </div>
-
-        <div className={`flex items-center gap-2 flex-row-reverse ${gameState.turn === PlayerColor.BLUE ? 'opacity-100' : 'opacity-40 grayscale'} transition-all duration-300`}>
-           <div className={`w-8 h-8 rounded-full flex items-center justify-center bg-blue-900 border border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]`}>
-              {gameState.bluePlayer === 'AI' ? <Cpu size={16} className="text-blue-400"/> : <User size={16} className="text-blue-400"/>}
-           </div>
-           <div className="text-right leading-tight">
-             <span className="block text-xs font-bold text-blue-400">蓝方</span>
-             <span className="text-[10px] text-slate-400 block">
-               {gameState.bluePlayer === 'HUMAN' ? '玩家' : (gameState.bluePlayer === 'AI' ? '电脑' : '等待中...')}
-             </span>
-           </div>
-        </div>
-      </div>
-
-      {/* AI Reason */}
+      {/* AI Bubble */}
       {aiReasoning && !gameState.winner && gameMode === 'PVE' && (
-        <div className="mb-4 text-xs text-center text-emerald-300 bg-emerald-900/30 px-4 py-2 rounded-full border border-emerald-500/30 animate-in fade-in slide-in-from-top-2">
-           Gemini: {aiReasoning}
+        <div className="absolute top-24 left-1/2 -translate-x-1/2 w-64 z-30 animate-in zoom-in fade-in duration-300">
+            <div className="bg-white/95 px-4 py-2 rounded-xl border-2 border-purple-300 shadow-xl text-xs font-medium text-purple-900 text-center relative">
+               <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white border-b-2 border-r-2 border-purple-300 rotate-45"></div>
+               {aiReasoning}
+            </div>
         </div>
       )}
 
       {/* GAME BOARD */}
-      <div className="relative w-full max-w-[340px] md:max-w-[400px] aspect-square mx-auto mb-8 select-none p-6 bg-slate-800 rounded-2xl shadow-2xl border border-slate-700">
+      {/* 
+        Changes for Alignment:
+        1. Outer container defines max-width and aspect ratio (Square).
+        2. Inner container (Play Area) uses a percentage inset (e.g. 10%) to create padding.
+        3. All board elements (SVG, Pads, Pieces) use absolute positioning relative to this Inner Container.
+           Since they share the same parent bounds (0% to 100%), coordinates will align perfectly.
+      */}
+      <div className="relative w-full max-w-xl aspect-square mx-auto my-4 select-none">
         
-        {/* Inner Container defining the playing field padding */}
-        <div className="relative w-full h-full">
+        {/* Play Area: Inset by 10% to prevent pieces from clipping at edges (Zoomed In) */}
+        <div className="absolute top-[10%] left-[10%] right-[10%] bottom-[10%]">
             
-            {/* The Grid Lines Container - Inset by 10% to allow pieces on edges to sit comfortably */}
-            <div className="absolute top-[10%] left-[10%] right-[10%] bottom-[10%]">
+            {/* 1. Paths (SVG Lines) */}
+            <svg width="100%" height="100%" className="absolute inset-0 overflow-visible z-0">
+                <defs>
+                  <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feDropShadow dx="0" dy="1" stdDeviation="1" floodColor="#3f6212" floodOpacity="0.5"/>
+                  </filter>
+                </defs>
                 
-               {/* SVG Lines */}
-               <svg width="100%" height="100%" className="overflow-visible">
-                  <defs>
-                    <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#475569" />
-                        <stop offset="50%" stopColor="#94a3b8" />
-                        <stop offset="100%" stopColor="#475569" />
-                    </linearGradient>
-                  </defs>
-                  
-                  {/* Grid Lines */}
-                  <g className="stroke-slate-600 stroke-2">
-                      <line x1="0%" y1="0%" x2="0%" y2="100%" />
-                      <line x1="33.33%" y1="0%" x2="33.33%" y2="100%" />
-                      <line x1="66.66%" y1="0%" x2="66.66%" y2="100%" />
-                      <line x1="100%" y1="0%" x2="100%" y2="100%" />
-                      
-                      <line x1="0%" y1="0%" x2="100%" y2="0%" />
-                      <line x1="0%" y1="33.33%" x2="100%" y2="33.33%" />
-                      <line x1="0%" y1="66.66%" x2="100%" y2="66.66%" />
-                      <line x1="0%" y1="100%" x2="100%" y2="100%" />
-                  </g>
+                {/* Grid Lines (Vines) */}
+                <g className="stroke-[#5a9e36] stroke-[8px] stroke-linecap-round" filter="url(#shadow)">
+                    {/* Vertical Lines */}
+                    <line x1="0%" y1="0%" x2="0%" y2="100%" />
+                    <line x1="33.33%" y1="0%" x2="33.33%" y2="100%" />
+                    <line x1="66.66%" y1="0%" x2="66.66%" y2="100%" />
+                    <line x1="100%" y1="0%" x2="100%" y2="100%" />
+                    
+                    {/* Horizontal Lines */}
+                    <line x1="0%" y1="0%" x2="100%" y2="0%" />
+                    <line x1="0%" y1="33.33%" x2="100%" y2="33.33%" />
+                    <line x1="0%" y1="66.66%" x2="100%" y2="66.66%" />
+                    <line x1="0%" y1="100%" x2="100%" y2="100%" />
+                </g>
 
-                  {/* Diagonal Connections to Center */}
-                  <g className="stroke-slate-700 stroke-[1.5px]" strokeDasharray="4 4">
-                      <line x1="33.33%" y1="33.33%" x2="66.66%" y2="66.66%" />
-                      <line x1="66.66%" y1="33.33%" x2="33.33%" y2="66.66%" />
-                  </g>
-               </svg>
-               
-               {/* Intersection Dots */}
-               {renderGridPoints()}
+                {/* Diagonal Connections to Center */}
+                <g className="stroke-[#5a9e36] stroke-[6px]" strokeDasharray="8 8">
+                    <line x1="33.33%" y1="33.33%" x2="66.66%" y2="66.66%" />
+                    <line x1="66.66%" y1="33.33%" x2="33.33%" y2="66.66%" />
+                </g>
+            </svg>
 
-               {/* Center Burrow Marker */}
-               <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full border-2 border-slate-600 bg-slate-800 flex items-center justify-center z-0">
-                   <div className="w-1.5 h-1.5 bg-slate-500 rounded-full"></div>
-               </div>
+            {/* 2. Intersection Pads (Grass Mounds) */}
+            <div className="absolute inset-0 z-0">
+                {renderPads()}
+            </div>
 
-                {/* Pieces Layer */}
-                <div className="absolute inset-0 z-10">
-                    {gameState.board.map((cell) => {
-                        // Logic for visual highlighting
-                        let isValidTarget = false;
+            {/* 3. Center Burrow */}
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[11%] aspect-square rounded-full bg-[#5a493e] border-4 border-[#45362e] shadow-inner flex items-center justify-center z-0">
+                <div className="text-2xl opacity-50 grayscale brightness-50">🐭</div>
+            </div>
+
+            {/* 4. Pieces Layer */}
+            <div className="absolute inset-0 z-10">
+                {gameState.board.map((cell) => {
+                    // Logic for visual highlighting
+                    let isValidTarget = false;
+                    
+                    if (selectedIndex !== null && cell.index !== selectedIndex && isAdjacent(selectedIndex, cell.index)) {
+                        const fromCell = gameState.board[selectedIndex];
                         
-                        if (selectedIndex !== null && cell.index !== selectedIndex && isAdjacent(selectedIndex, cell.index)) {
-                            const fromCell = gameState.board[selectedIndex];
-                            
-                            let canEnter = true;
-                            // Center Checks
-                            if (cell.index === CENTER_INDEX) {
-                                // 1. Only Rat can enter
-                                if (fromCell.piece?.type !== AnimalType.RAT) canEnter = false;
-                                // 2. Safe Zone: If occupied, cannot enter (no attacks allowed)
-                                if (cell.piece) canEnter = false;
-                            }
-
-                            if (!canEnter) {
-                                isValidTarget = false;
-                            } else if (!cell.isRevealed) {
-                                isValidTarget = false; // Cannot move onto hidden
-                            } else {
-                                if (!cell.piece) {
-                                    isValidTarget = true;
-                                } else if (cell.piece.color !== gameState.turn) {
-                                    const myRank = fromCell.piece!.rank;
-                                    const enemyRank = cell.piece.rank;
-                                    let canAttack = myRank >= enemyRank;
-                                    if (fromCell.piece!.type === AnimalType.RAT && cell.piece.type === AnimalType.ELEPHANT) canAttack = true;
-                                    if (fromCell.piece!.type === AnimalType.ELEPHANT && cell.piece.type === AnimalType.RAT) canAttack = false;
-                                    
-                                    if (canAttack) isValidTarget = true;
-                                }
-                            }
+                        let canEnter = true;
+                        // Center Checks
+                        if (cell.index === CENTER_INDEX) {
+                            if (fromCell.piece?.type !== AnimalType.RAT) canEnter = false;
+                            if (cell.piece) canEnter = false;
                         }
 
-                        return (
-                        <BoardCell
-                            key={cell.index}
-                            cell={cell}
-                            style={getPositionStyle(cell.index)}
-                            isSelected={selectedIndex === cell.index}
-                            isValidTarget={isValidTarget}
-                            disabled={gameState.winner !== null || (aiThinking && gameMode === 'PVE')}
-                            onClick={() => handleCellClick(cell.index)}
-                        />
-                        );
-                    })}
-                </div>
+                        if (!canEnter) {
+                            isValidTarget = false;
+                        } else if (!cell.isRevealed) {
+                            isValidTarget = false;
+                        } else {
+                            if (!cell.piece) {
+                                isValidTarget = true;
+                            } else if (cell.piece.color !== gameState.turn) {
+                                const myRank = fromCell.piece!.rank;
+                                const enemyRank = cell.piece.rank;
+                                let canAttack = myRank >= enemyRank;
+                                if (fromCell.piece!.type === AnimalType.RAT && cell.piece.type === AnimalType.ELEPHANT) canAttack = true;
+                                if (fromCell.piece!.type === AnimalType.ELEPHANT && cell.piece.type === AnimalType.RAT) canAttack = false;
+                                
+                                if (canAttack) isValidTarget = true;
+                            }
+                        }
+                    }
+
+                    return (
+                    <BoardCell
+                        key={cell.index}
+                        cell={cell}
+                        style={getPositionStyle(cell.index)}
+                        isSelected={selectedIndex === cell.index}
+                        isValidTarget={isValidTarget}
+                        disabled={gameState.winner !== null || (aiThinking && gameMode === 'PVE')}
+                        onClick={() => handleCellClick(cell.index)}
+                    />
+                    );
+                })}
             </div>
         </div>
       </div>
 
-      {/* History Log */}
-      <div className="w-full max-w-lg mt-auto bg-slate-800/40 rounded-xl p-3 h-32 overflow-y-auto border border-slate-700/30 text-xs custom-scrollbar">
-         {gameState.history.map((log, i) => (
-             <div key={i} className="mb-1.5 text-slate-400 border-b border-slate-700/50 pb-1.5 last:border-0 flex gap-2">
-               <span className="text-slate-600 font-mono opacity-50">#{gameState.history.length - i}</span>
-               <span>{log}</span>
+      {/* Footer: Rank Bar */}
+      <div className="w-full max-w-lg mb-4">
+         <div className="bg-[#fffbeb] rounded-xl border-b-4 border-amber-200 p-2 flex items-center justify-between shadow-sm">
+             <div className="flex gap-1 overflow-x-auto no-scrollbar w-full justify-between px-2">
+                {[
+                  AnimalType.ELEPHANT, AnimalType.LION, AnimalType.TIGER, AnimalType.LEOPARD,
+                  AnimalType.WOLF, AnimalType.DOG, AnimalType.CAT, AnimalType.RAT
+                ].map((type) => (
+                  <div key={type} className="flex flex-col items-center">
+                     <span className="text-xl md:text-2xl filter drop-shadow-sm">{ANIMAL_EMOJIS[type]}</span>
+                     <span className="text-[10px] text-amber-800 font-bold scale-75">{ANIMAL_RANKS[type]}</span>
+                  </div>
+                ))}
              </div>
-           ))}
+         </div>
       </div>
 
     </div>

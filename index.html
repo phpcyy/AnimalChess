@@ -19,6 +19,22 @@
       .rotate-y-180 {
         transform: rotateY(180deg);
       }
+      @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap');
+      body {
+        font-family: 'Nunito', sans-serif;
+      }
+      /* Hide scrollbar for clean UI */
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+      .wood-pattern {
+        background-color: #d97706;
+        background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.1) 0px, rgba(255,255,255,0.1) 10px, transparent 10px, transparent 20px);
+      }
     </style>
   <script type="importmap">
 {
@@ -32,7 +48,7 @@
 }
 </script>
 </head>
-  <body class="bg-slate-900 text-slate-100 antialiased overflow-hidden selection:bg-indigo-500 selection:text-white">
+  <body class="bg-[#8cd65e] text-slate-800 antialiased overflow-hidden selection:bg-yellow-300 selection:text-amber-900">
     <div id="root"></div>
   </body>
 </html>
