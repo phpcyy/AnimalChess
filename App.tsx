@@ -400,7 +400,7 @@ const App: React.FC = () => {
                <ul className="space-y-2 list-disc pl-4 marker:text-amber-500">
                   <li><strong>棋盘:</strong> 翻开神秘盒子，寻找你的伙伴。</li>
                   <li><strong>中心鼠洞:</strong> 只有 <span className="font-bold text-amber-700">老鼠 🐭</span> 能进，进去后无敌！</li>
-                  <li><strong>等级压制:</strong> 🐘 > 🦁 > 🐯 > 🐆 > 🐺 > 🐶 > 🐱 > 🐭</li>
+                  <li><strong>等级压制:</strong> 🐘 &gt; 🦁 &gt; 🐯 &gt; 🐆 &gt; 🐺 &gt; 🐶 &gt; 🐱 &gt; 🐭</li>
                   <li><strong>逆袭:</strong> 小老鼠 🐭 可以吃掉 大象 🐘！</li>
                </ul>
             </div>
