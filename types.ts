@@ -31,8 +31,8 @@ export interface GameState {
   board: Cell[];
   turn: PlayerColor; // Whose turn is it currently
   winner: PlayerColor | 'DRAW' | null;
-  redPlayer: 'HUMAN' | 'AI' | null; // Who controls Red
-  bluePlayer: 'HUMAN' | 'AI' | null; // Who controls Blue
+  redPlayer: 'HUMAN' | null; // Always HUMAN in this version
+  bluePlayer: 'HUMAN' | null; // Always HUMAN in this version
   userColor: PlayerColor | null; // Which color belongs to the starting user (assigned on first flip)
   history: string[];
 }
@@ -41,9 +41,4 @@ export interface Move {
   fromIndex: number | null; // null if flipping
   toIndex: number; // index to move to or flip
   isFlip: boolean;
-}
-
-export interface AIAnalysisResult {
-  move: Move;
-  reasoning: string;
 }

@@ -3,13 +3,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { INITIAL_DECK, BOARD_SIZE, TOTAL_CELLS, CENTER_INDEX, ANIMAL_NAMES, ANIMAL_RANKS, ANIMAL_EMOJIS } from './constants';
 import { GameState, Cell, PlayerColor, Move, AnimalType } from './types';
 import BoardCell from './components/BoardCell';
-import { getAIMove } from './services/geminiService';
-import { RefreshCw, Info, Shield, Trophy, Users, Bot, Star, Swords, Circle } from 'lucide-react';
+import { RefreshCw, Info, Shield, Trophy, Users, Star, Swords, Circle } from 'lucide-react';
 
 const App: React.FC = () => {
   // --- State ---
-  // Default to PVP as requested
-  const [gameMode, setGameMode] = useState<'PVE' | 'PVP'>('PVP');
   const [gameState, setGameState] = useState<GameState>({
     board: [],
     turn: PlayerColor.RED,
@@ -21,10 +18,7 @@ const App: React.FC = () => {
   });
   
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [aiThinking, setAiThinking] = useState(false);
   const [showRules, setShowRules] = useState(false);
-  const [aiReasoning, setAiReasoning] = useState<string | null>(null);
 
   // --- Initialization ---
   const initGame = useCallback(() => {
@@ -55,18 +49,12 @@ const App: React.FC = () => {
       history: ["游戏开始。请翻开一张牌！"],
     });
     setSelectedIndex(null);
-    setAiThinking(false);
-    setAiReasoning(null);
   }, []);
 
-  // Re-init game when mode changes (optional, but cleaner)
+  // Re-init game on mount
   useEffect(() => {
     initGame();
-  }, [initGame, gameMode]);
-
-  const toggleGameMode = () => {
-    setGameMode(prev => prev === 'PVE' ? 'PVP' : 'PVE');
-  };
+  }, [initGame]);
 
   // --- Topology Helpers ---
   const isAdjacent = useCallback((idx1: number, idx2: number) => {
@@ -188,39 +176,11 @@ const App: React.FC = () => {
 
       // Assign Colors if not yet assigned
       if (gameState.userColor === null) {
-        if (gameMode === 'PVP') {
-            // PvP Mode: Both are HUMAN
-            // First revealed color is Current Player's color (conceptually, though we track turn separately)
-            nextRedPlayer = 'HUMAN';
-            nextBluePlayer = 'HUMAN';
-            nextUserColor = piece.color; 
-        } else {
-            // PvE Mode Logic
-            const isUserTurn = !aiThinking;
-            if (isUserTurn) {
-                // Human flipped
-                if (piece.color === PlayerColor.RED) {
-                    nextUserColor = PlayerColor.RED;
-                    nextRedPlayer = 'HUMAN';
-                    nextBluePlayer = 'AI';
-                } else {
-                    nextUserColor = PlayerColor.BLUE;
-                    nextBluePlayer = 'HUMAN';
-                    nextRedPlayer = 'AI';
-                }
-            } else {
-                 // AI flipped first
-                if (piece.color === PlayerColor.RED) {
-                    nextUserColor = PlayerColor.BLUE;
-                    nextRedPlayer = 'AI';
-                    nextBluePlayer = 'HUMAN';
-                } else {
-                    nextUserColor = PlayerColor.RED;
-                    nextBluePlayer = 'AI';
-                    nextRedPlayer = 'HUMAN';
-                }
-            }
-        }
+          // PvP Mode: Both are HUMAN
+          // First revealed color is Current Player's color
+          nextRedPlayer = 'HUMAN';
+          nextBluePlayer = 'HUMAN';
+          nextUserColor = piece.color; 
       }
     } else {
       // Moving
@@ -253,8 +213,7 @@ const App: React.FC = () => {
     // Check Win Condition
     let nextWinner: PlayerColor | null = null;
     
-    // NEW RULE: Do not judge winner if there are still hidden cards on the board
-    // Exception: Center index is always revealed/empty, so ignore it in check (it's initialized revealed anyway)
+    // Win Logic: Game does not end if unrevealed cards exist
     const unrevealedCount = nextBoard.filter(c => !c.isRevealed).length;
     
     if (unrevealedCount === 0) {
@@ -286,23 +245,7 @@ const App: React.FC = () => {
 
   // --- Interaction ---
   const handleCellClick = async (index: number) => {
-    if (gameState.winner || isProcessing || aiThinking) return;
-
-    // Turn check
-    // In PvP, always Human turn (if game not over)
-    const isHumanTurn = 
-      (gameState.turn === PlayerColor.RED && gameState.redPlayer === 'HUMAN') ||
-      (gameState.turn === PlayerColor.BLUE && gameState.bluePlayer === 'HUMAN') ||
-      (gameState.redPlayer === null && gameMode === 'PVP') || // PvP start
-      (gameState.redPlayer === null && gameMode === 'PVE');   // PvE start (Human goes first typically or handled by AI effect)
-
-    // For PvE specifically:
-    if (gameMode === 'PVE') {
-        const isMyTurn = (gameState.turn === PlayerColor.RED && gameState.redPlayer !== 'AI') ||
-                         (gameState.turn === PlayerColor.BLUE && gameState.bluePlayer !== 'AI') ||
-                         (gameState.redPlayer === null);
-        if (!isMyTurn) return;
-    }
+    if (gameState.winner) return;
 
     const cell = gameState.board[index];
 
@@ -344,40 +287,6 @@ const App: React.FC = () => {
       }
     }
   };
-
-  // --- AI Loop ---
-  useEffect(() => {
-    const runAITurn = async () => {
-      if (gameState.winner || gameMode === 'PVP') return; // No AI in PvP
-      
-      const isRedAI = gameState.turn === PlayerColor.RED && gameState.redPlayer === 'AI';
-      const isBlueAI = gameState.turn === PlayerColor.BLUE && gameState.bluePlayer === 'AI';
-      
-      if (isRedAI || isBlueAI) {
-        setAiThinking(true);
-        setIsProcessing(true);
-        
-        await new Promise(r => setTimeout(r, 800));
-
-        const validMoves = getValidMoves(gameState.board, gameState.turn);
-        const result = await getAIMove(gameState.board, gameState.turn, validMoves);
-        
-        if (result) {
-            setAiReasoning(result.reasoning);
-            await new Promise(r => setTimeout(r, 600)); 
-            await handleMove(result.move);
-        } else {
-            console.warn("AI has no moves");
-        }
-
-        setIsProcessing(false);
-        setAiThinking(false);
-      }
-    };
-
-    runAITurn();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameState.turn, gameState.redPlayer, gameState.bluePlayer, gameState.winner, gameMode]);
 
   // --- Rendering Helpers ---
   
@@ -422,7 +331,7 @@ const App: React.FC = () => {
          {/* Red Player (Left) */}
          <div className={`flex items-center gap-2 pr-4 pl-2 py-2 rounded-2xl border-2 border-[#b45309] bg-[#d97706] shadow-lg text-white transition-all duration-300 relative wood-pattern ${gameState.turn === PlayerColor.RED ? 'scale-105 ring-4 ring-yellow-400 z-10' : 'opacity-90 scale-95'}`}>
              <div className="w-12 h-12 rounded-full border-2 border-white/50 bg-rose-500 flex items-center justify-center text-2xl shadow-inner relative">
-                 {gameState.redPlayer === 'AI' ? '🤖' : (gameState.redPlayer ? '🧑' : '?')}
+                 🧑
                  {/* Turn Indicator */}
                  {gameState.turn === PlayerColor.RED && !gameState.winner && (
                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-600 rounded-full border-2 border-white animate-pulse shadow-md z-20"></div>
@@ -431,7 +340,7 @@ const App: React.FC = () => {
              <div className="flex flex-col">
                  <span className="text-xs font-bold text-amber-200 uppercase tracking-wider">Red Team</span>
                  <span className="text-lg font-black leading-none drop-shadow-sm">
-                    {gameState.redPlayer === 'AI' ? '电脑' : '玩家'}
+                    玩家
                  </span>
              </div>
          </div>
@@ -451,7 +360,7 @@ const App: React.FC = () => {
          {/* Blue Player (Right) */}
          <div className={`flex flex-row-reverse items-center gap-2 pl-4 pr-2 py-2 rounded-2xl border-2 border-[#b45309] bg-[#d97706] shadow-lg text-white transition-all duration-300 relative wood-pattern ${gameState.turn === PlayerColor.BLUE ? 'scale-105 ring-4 ring-yellow-400 z-10' : 'opacity-90 scale-95'}`}>
              <div className="w-12 h-12 rounded-full border-2 border-white/50 bg-blue-500 flex items-center justify-center text-2xl shadow-inner relative">
-                 {gameState.bluePlayer === 'AI' ? '🤖' : (gameState.bluePlayer ? '🧑' : '?')}
+                 🧑
                  {/* Turn Indicator */}
                  {gameState.turn === PlayerColor.BLUE && !gameState.winner && (
                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-600 rounded-full border-2 border-white animate-pulse shadow-md z-20"></div>
@@ -460,7 +369,7 @@ const App: React.FC = () => {
              <div className="flex flex-col items-end">
                  <span className="text-xs font-bold text-amber-200 uppercase tracking-wider">Blue Team</span>
                  <span className="text-lg font-black leading-none drop-shadow-sm">
-                    {gameState.bluePlayer === 'AI' ? '电脑' : '玩家'}
+                    玩家
                  </span>
              </div>
          </div>
@@ -468,10 +377,10 @@ const App: React.FC = () => {
 
       {/* Control Strip */}
       <div className="flex gap-4 mt-4 relative z-10">
-         <button onClick={toggleGameMode} className="bg-white/90 p-2 rounded-full shadow-lg text-green-700 hover:scale-110 transition-transform flex items-center gap-2 px-4 font-bold text-sm">
-            {gameMode === 'PVE' ? <Bot size={20} /> : <Users size={20} />}
-            {gameMode === 'PVE' ? '人机对战中' : '双人对战中'}
-         </button>
+         <div className="bg-white/90 p-2 rounded-full shadow-lg text-green-700 flex items-center gap-2 px-4 font-bold text-sm">
+            <Users size={20} />
+            双人对战
+         </div>
          <button onClick={() => setShowRules(true)} className="bg-white/90 p-2 rounded-full shadow-lg text-amber-600 hover:scale-110 transition-transform">
              <Info size={20} />
          </button>
@@ -499,16 +408,6 @@ const App: React.FC = () => {
               明白了!
             </button>
           </div>
-        </div>
-      )}
-
-      {/* AI Bubble */}
-      {aiReasoning && !gameState.winner && gameMode === 'PVE' && (
-        <div className="absolute top-24 left-1/2 -translate-x-1/2 w-64 z-30 animate-in zoom-in fade-in duration-300">
-            <div className="bg-white/95 px-4 py-2 rounded-xl border-2 border-purple-300 shadow-xl text-xs font-medium text-purple-900 text-center relative">
-               <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white border-b-2 border-r-2 border-purple-300 rotate-45"></div>
-               {aiReasoning}
-            </div>
         </div>
       )}
 
@@ -562,7 +461,7 @@ const App: React.FC = () => {
 
             {/* 3. Center Burrow */}
             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[11%] aspect-square rounded-full bg-[#5a493e] border-4 border-[#45362e] shadow-inner flex items-center justify-center z-0">
-                <div className="text-2xl opacity-50 grayscale brightness-50">🐭</div>
+                <div className="text-xl md:text-2xl opacity-50 grayscale brightness-50">🐭</div>
             </div>
 
             {/* 4. Pieces Layer */}
@@ -607,7 +506,7 @@ const App: React.FC = () => {
                         style={getPositionStyle(cell.index)}
                         isSelected={selectedIndex === cell.index}
                         isValidTarget={isValidTarget}
-                        disabled={gameState.winner !== null || (aiThinking && gameMode === 'PVE')}
+                        disabled={gameState.winner !== null}
                         onClick={() => handleCellClick(cell.index)}
                     />
                     );
